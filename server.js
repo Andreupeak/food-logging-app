@@ -1,8 +1,7 @@
-// server.js (CommonJS - complete)
+// server.js (single-file backend - CommonJS)
 const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
-const FormData = require('form-data');
 const multer = require('multer');
 const path = require('path');
 require('dotenv').config();
@@ -19,7 +18,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Multer for file uploads (used by test frontend)
 const upload = multer({ storage: multer.memoryStorage() });
 
-// Config / keys
+// Config / keys (from .env)
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const SPOONACULAR_KEY = process.env.SPOONACULAR_KEY;
 const EDAMAM_NUTRITION_ID = process.env.EDAMAM_NUTRITION_ID;
@@ -30,15 +29,11 @@ const FATSECRET_CLIENT_ID = process.env.FATSECRET_CLIENT_ID;
 const FATSECRET_CLIENT_SECRET = process.env.FATSECRET_CLIENT_SECRET;
 
 // ---------- Helpers ----------
-
-// strip data URI prefix if present, returns only base64 payload
 function stripBase64Prefix(b64) {
   if (!b64) return b64;
   const idx = b64.indexOf('base64,');
   return idx >= 0 ? b64.slice(idx + 7) : b64;
 }
-
-// Convert a buffer to data URL (jpeg)
 function bufferToDataUrl(buffer, mime = 'image/jpeg') {
   const base64 = buffer.toString('base64');
   return `data:${mime};base64,${base64}`;
@@ -56,14 +51,8 @@ async function analyzeWithOpenAI(imageBase64) {
         {
           role: "user",
           content: [
-            {
-              type: "input_image",
-              image_url: dataUrl
-            },
-            {
-              type: "text",
-              text: "Identify the primary food or dish in this image. Reply with a short name only, for example: 'chicken curry with rice'. No extra explanation."
-            }
+            { type: "input_image", image_url: dataUrl },
+            { type: "text", text: "Identify the primary food or dish in this image. Reply with a short name only, e.g. 'chicken curry with rice'. No extra explanation." }
           ]
         }
       ],
@@ -74,12 +63,12 @@ async function analyzeWithOpenAI(imageBase64) {
     if (!text) throw new Error('Empty recognition result from OpenAI');
     return text;
   } catch (err) {
-    console.error('OpenAI Vision error:', err.message || err);
+    console.error('OpenAI Vision error:', err.response?.data || err.message || err);
     throw new Error('OpenAI Vision failed: ' + (err.message || err));
   }
 }
 
-// ---------- OpenAI Nutrition (tab 6 uses image -> nutrition) ----------
+// ---------- OpenAI Nutrition (Tab 6 uses image -> nutrition) ----------
 async function getNutritionFromOpenAIImage(imageBase64) {
   try {
     const base64Only = stripBase64Prefix(imageBase64);
@@ -121,7 +110,7 @@ If unsure, make a reasonable estimate.
     const parsed = JSON.parse(jsonText);
     return parsed;
   } catch (err) {
-    console.error('OpenAI Nutrition (image) error:', err.message || err);
+    console.error('OpenAI Nutrition (image) error:', err.response?.data || err.message || err);
     throw new Error('OpenAI Nutrition image analysis failed: ' + (err.message || err));
   }
 }
@@ -190,7 +179,6 @@ async function getNutritionFatSecret(foodName) {
     const token = tokenRes.data && tokenRes.data.access_token;
     if (!token) throw new Error('FatSecret token failed');
 
-    // food.search or foods.search variations exist, try common endpoints:
     const searchRes = await axios.get('https://platform.fatsecret.com/rest/server.api', {
       params: { method: 'foods.search', search_expression: foodName, format: 'json' },
       headers: { Authorization: `Bearer ${token}` }
@@ -251,7 +239,6 @@ async function getNutritionOpenFoodFacts(foodName) {
 // Tab 5: Spoonacular (nutrition estimation)
 async function getNutritionSpoonacular(foodName) {
   try {
-    // try guessNutrition first
     const guessRes = await axios.get('https://api.spoonacular.com/recipes/guessNutrition', {
       params: { title: foodName, apiKey: SPOONACULAR_KEY }
     });
@@ -272,7 +259,6 @@ async function getNutritionSpoonacular(foodName) {
       };
     }
 
-    // fallback: ingredient search + info
     const searchRes = await axios.get('https://api.spoonacular.com/food/ingredients/search', {
       params: { query: foodName, number: 1, apiKey: SPOONACULAR_KEY }
     });
@@ -315,9 +301,7 @@ Round numbers to one decimal place.
 `;
     const resp = await openai.responses.create({
       model: "gpt-4o-mini",
-      input: [
-        { role: "user", content: prompt }
-      ],
+      input: [{ role: "user", content: prompt }],
       temperature: 0.0
     });
     const out = resp.output_text || '';
@@ -326,22 +310,16 @@ Round numbers to one decimal place.
     const jsonText = out.slice(first, last + 1);
     return JSON.parse(jsonText);
   } catch (err) {
-    console.error('OpenAI nutrition by name error:', err.message || err);
+    console.error('OpenAI nutrition by name error:', err.response?.data || err.message || err);
     throw new Error('OpenAI nutrition lookup failed');
   }
 }
 
 // ---------- Routes ----------
 
-// Simple health check
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
-/**
- * POST /api/openai/vision
- * Accepts multipart/form-data file named "image"
- * Returns: { foodName }
- * This endpoint is used by the simple test frontend (FormData upload).
- */
+// POST /api/openai/vision - FormData file upload (test UI uses this)
 app.post('/api/openai/vision', upload.single('image'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'Missing file' });
@@ -349,15 +327,12 @@ app.post('/api/openai/vision', upload.single('image'), async (req, res) => {
     const foodName = await analyzeWithOpenAI(dataUrl);
     res.json({ foodName });
   } catch (err) {
-    console.error('Vision endpoint error:', err.message || err);
+    console.error('Vision endpoint error:', err.response?.data || err.message || err);
     res.status(500).json({ error: err.message || 'Vision failed' });
   }
 });
 
-/**
- * GET /api/nutrition/:tab?q=foodName
- * Use tab 1..6 to fetch nutrition for a given food name (tab 6 uses OpenAI by name)
- */
+// GET /api/nutrition/:tab?q=foodName - call provider by name
 app.get('/api/nutrition/:tab', async (req, res) => {
   try {
     const tab = Number(req.params.tab);
@@ -366,26 +341,13 @@ app.get('/api/nutrition/:tab', async (req, res) => {
 
     let nutrition;
     switch (tab) {
-      case 1:
-        nutrition = await getNutritionEdamam1(q);
-        break;
-      case 2:
-        nutrition = await getNutritionEdamam2(q);
-        break;
-      case 3:
-        nutrition = await getNutritionFatSecret(q);
-        break;
-      case 4:
-        nutrition = await getNutritionOpenFoodFacts(q);
-        break;
-      case 5:
-        nutrition = await getNutritionSpoonacular(q);
-        break;
-      case 6:
-        nutrition = await getNutritionFromOpenAIByName(q);
-        break;
-      default:
-        return res.status(400).json({ error: 'Invalid tab (1-6)' });
+      case 1: nutrition = await getNutritionEdamam1(q); break;
+      case 2: nutrition = await getNutritionEdamam2(q); break;
+      case 3: nutrition = await getNutritionFatSecret(q); break;
+      case 4: nutrition = await getNutritionOpenFoodFacts(q); break;
+      case 5: nutrition = await getNutritionSpoonacular(q); break;
+      case 6: nutrition = await getNutritionFromOpenAIByName(q); break;
+      default: return res.status(400).json({ error: 'Invalid tab (1-6)' });
     }
 
     res.json({ foodName: q, nutrition });
@@ -395,11 +357,7 @@ app.get('/api/nutrition/:tab', async (req, res) => {
   }
 });
 
-/**
- * POST /api/analyze-image
- * Body: { image: "data:image/jpeg;base64,...." or raw base64, tab: 1..6 }
- * This endpoint performs recognition (OpenAI Vision) then calls the chosen provider and returns result.
- */
+// POST /api/analyze-image - entire flow (image + tab)
 app.post('/api/analyze-image', async (req, res) => {
   try {
     const { image, tab } = req.body;
@@ -413,26 +371,14 @@ app.post('/api/analyze-image', async (req, res) => {
       return res.json({ foodName, nutrition: openaiNutrition });
     }
 
-    // Tabs 1-5
     let nutrition;
     switch (Number(tab)) {
-      case 1:
-        nutrition = await getNutritionEdamam1(foodName);
-        break;
-      case 2:
-        nutrition = await getNutritionEdamam2(foodName);
-        break;
-      case 3:
-        nutrition = await getNutritionFatSecret(foodName);
-        break;
-      case 4:
-        nutrition = await getNutritionOpenFoodFacts(foodName);
-        break;
-      case 5:
-        nutrition = await getNutritionSpoonacular(foodName);
-        break;
-      default:
-        return res.status(400).json({ error: 'Invalid tab (must be 1-6)' });
+      case 1: nutrition = await getNutritionEdamam1(foodName); break;
+      case 2: nutrition = await getNutritionEdamam2(foodName); break;
+      case 3: nutrition = await getNutritionFatSecret(foodName); break;
+      case 4: nutrition = await getNutritionOpenFoodFacts(foodName); break;
+      case 5: nutrition = await getNutritionSpoonacular(foodName); break;
+      default: return res.status(400).json({ error: 'Invalid tab (must be 1-6)' });
     }
 
     return res.json({ foodName, nutrition });
