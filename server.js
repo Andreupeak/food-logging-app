@@ -122,14 +122,17 @@ If unsure, make a reasonable estimate.`;
 // ---------- Nutrition provider helpers ----------
 
 // Tab 1: Edamam Nutrition Analysis API (nutrition-data)
+// NOTE: This API requires a recipe/meal format, not just a food name
+// Using Tab 2 (Food DB) is more reliable for single foods
 async function getNutritionEdamam1(foodName) {
   try {
+    // Try as a recipe/meal first
     const res = await axios.get('https://api.edamam.com/api/nutrition-data', {
       params: {
         app_id: EDAMAM_NUTRITION_ID,
         app_key: EDAMAM_NUTRITION_KEY,
         nutrition_type: 'logging',
-        query: foodName
+        ingr: foodName
       }
     });
     const data = res.data || {};
@@ -141,7 +144,7 @@ async function getNutritionEdamam1(foodName) {
     return { calories, protein, carbs, fat };
   } catch (err) {
     console.error('Edamam Nutrition error:', err.response?.data || err.message || err);
-    throw new Error('Edamam Nutrition failed');
+    throw new Error('Edamam Nutrition failed - try Tab 2 (Edamam Food DB) instead');
   }
 }
 
@@ -174,12 +177,18 @@ async function getNutritionEdamam2(foodName) {
 // Tab 3: FatSecret
 async function getNutritionFatSecret(foodName) {
   try {
+    if (!FATSECRET_CLIENT_ID || !FATSECRET_CLIENT_SECRET) {
+      throw new Error('FatSecret credentials not configured in .env');
+    }
+
     const params = new URLSearchParams();
     params.append('client_id', FATSECRET_CLIENT_ID);
     params.append('client_secret', FATSECRET_CLIENT_SECRET);
     params.append('grant_type', 'client_credentials');
 
-    const tokenRes = await axios.post('https://oauth.fatsecret.com/connect/token', params);
+    const tokenRes = await axios.post('https://oauth.fatsecret.com/connect/token', params, {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    });
     const token = tokenRes.data && tokenRes.data.access_token;
     if (!token) throw new Error('FatSecret token failed');
 
@@ -215,7 +224,7 @@ async function getNutritionFatSecret(foodName) {
 
   } catch (err) {
     console.error('FatSecret error:', err.response?.data || err.message || err);
-    throw new Error('FatSecret failed');
+    throw new Error('FatSecret failed: ' + (err.message || 'Check credentials in .env'));
   }
 }
 
