@@ -181,17 +181,23 @@ async function getNutritionFatSecret(foodName) {
       throw new Error('FatSecret credentials not configured in .env');
     }
 
-    const params = new URLSearchParams();
-    params.append('client_id', FATSECRET_CLIENT_ID);
-    params.append('client_secret', FATSECRET_CLIENT_SECRET);
-    params.append('grant_type', 'client_credentials');
-
-    const tokenRes = await axios.post('https://oauth.fatsecret.com/connect/token', params, {
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-    });
+    // Step 1: Get access token using Basic Auth
+    const auth = Buffer.from(`${FATSECRET_CLIENT_ID}:${FATSECRET_CLIENT_SECRET}`).toString('base64');
+    
+    const tokenRes = await axios.post('https://oauth.fatsecret.com/connect/token', 
+      'grant_type=client_credentials',
+      {
+        headers: { 
+          'Authorization': `Basic ${auth}`,
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      }
+    );
+    
     const token = tokenRes.data && tokenRes.data.access_token;
     if (!token) throw new Error('FatSecret token failed');
 
+    // Step 2: Search for food
     const searchRes = await axios.get('https://platform.fatsecret.com/rest/server.api', {
       params: { method: 'foods.search', search_expression: foodName, format: 'json' },
       headers: { Authorization: `Bearer ${token}` }
@@ -205,6 +211,7 @@ async function getNutritionFatSecret(foodName) {
     }
     if (!firstFood) throw new Error('FatSecret: no food found');
 
+    // Step 3: Get food details
     const foodId = firstFood.food_id || firstFood.id;
     const detailRes = await axios.get('https://platform.fatsecret.com/rest/server.api', {
       params: { method: 'food.get_v2', food_id: foodId, format: 'json' },
