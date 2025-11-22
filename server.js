@@ -45,25 +45,31 @@ async function analyzeWithOpenAI(imageBase64) {
     const base64Only = stripBase64Prefix(imageBase64);
     const dataUrl = `data:image/jpeg;base64,${base64Only}`;
 
-    const response = await openai.responses.create({
+    const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
-      input: [
+      messages: [
         {
           role: "user",
           content: [
-            { type: "input_image", image_url: dataUrl },
-            { type: "text", text: "Identify the primary food or dish in this image. Reply with a short name only, e.g. 'chicken curry with rice'. No extra explanation." }
+            {
+              type: "image_url",
+              image_url: { url: dataUrl }
+            },
+            {
+              type: "text",
+              text: "Identify the primary food or dish in this image. Reply with a short name only, e.g. 'chicken curry with rice'. No extra explanation."
+            }
           ]
         }
       ],
       temperature: 0.0
     });
 
-    const text = (response.output_text || "").trim();
+    const text = (response.choices[0]?.message?.content || "").trim();
     if (!text) throw new Error('Empty recognition result from OpenAI');
     return text;
   } catch (err) {
-    console.error('OpenAI Vision error:', err.response?.data || err.message || err);
+    console.error('OpenAI Vision error:', err.message || err);
     throw new Error('OpenAI Vision failed: ' + (err.message || err));
   }
 }
@@ -74,35 +80,33 @@ async function getNutritionFromOpenAIImage(imageBase64) {
     const base64Only = stripBase64Prefix(imageBase64);
     const dataUrl = `data:image/jpeg;base64,${base64Only}`;
 
-    const instruction = `
-You will be given a food image. Identify the dish and visible ingredients, then estimate nutrition values PER 100g for: calories, protein (g), carbs (g), fat (g).
+    const instruction = `You will be given a food image. Identify the dish and visible ingredients, then estimate nutrition values PER 100g for: calories, protein (g), carbs (g), fat (g).
 Return strictly valid JSON with these keys:
-{
-  "foodName": "short name",
-  "calories": number,
-  "protein": number,
-  "carbs": number,
-  "fat": number
-}
+{ "foodName": "short name", "calories": number, "protein": number, "carbs": number, "fat": number }
 Round numbers to one decimal place (or integer for calories).
-If unsure, make a reasonable estimate.
-`;
+If unsure, make a reasonable estimate.`;
 
-    const response = await openai.responses.create({
+    const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
-      input: [
+      messages: [
         {
           role: "user",
           content: [
-            { type: "input_image", image_url: dataUrl },
-            { type: "text", text: instruction }
+            {
+              type: "image_url",
+              image_url: { url: dataUrl }
+            },
+            {
+              type: "text",
+              text: instruction
+            }
           ]
         }
       ],
       temperature: 0.0
     });
 
-    const out = response.output_text || '';
+    const out = response.choices[0]?.message?.content || '';
     const first = out.indexOf('{');
     const last = out.lastIndexOf('}');
     if (first < 0 || last < 0) throw new Error('OpenAI nutrition output not JSON: ' + out);
@@ -110,7 +114,7 @@ If unsure, make a reasonable estimate.
     const parsed = JSON.parse(jsonText);
     return parsed;
   } catch (err) {
-    console.error('OpenAI Nutrition (image) error:', err.response?.data || err.message || err);
+    console.error('OpenAI Nutrition (image) error:', err.message || err);
     throw new Error('OpenAI Nutrition image analysis failed: ' + (err.message || err));
   }
 }
@@ -293,24 +297,24 @@ async function getNutritionSpoonacular(foodName) {
 // Tab 6 by name (fallback: get nutrition by name via OpenAI)
 async function getNutritionFromOpenAIByName(foodName) {
   try {
-    const prompt = `
-Provide nutrition estimates PER 100g for "${foodName}".
+    const prompt = `Provide nutrition estimates PER 100g for "${foodName}".
 Return strictly valid JSON:
 { "calories": number, "protein": number, "carbs": number, "fat": number }
-Round numbers to one decimal place.
-`;
-    const resp = await openai.responses.create({
+Round numbers to one decimal place.`;
+    
+    const resp = await openai.chat.completions.create({
       model: "gpt-4o-mini",
-      input: [{ role: "user", content: prompt }],
+      messages: [{ role: "user", content: prompt }],
       temperature: 0.0
     });
-    const out = resp.output_text || '';
+    
+    const out = resp.choices[0]?.message?.content || '';
     const first = out.indexOf('{'), last = out.lastIndexOf('}');
     if (first < 0 || last < 0) throw new Error('OpenAI nutrition response not JSON');
     const jsonText = out.slice(first, last + 1);
     return JSON.parse(jsonText);
   } catch (err) {
-    console.error('OpenAI nutrition by name error:', err.response?.data || err.message || err);
+    console.error('OpenAI nutrition by name error:', err.message || err);
     throw new Error('OpenAI nutrition lookup failed');
   }
 }
@@ -327,7 +331,7 @@ app.post('/api/openai/vision', upload.single('image'), async (req, res) => {
     const foodName = await analyzeWithOpenAI(dataUrl);
     res.json({ foodName });
   } catch (err) {
-    console.error('Vision endpoint error:', err.response?.data || err.message || err);
+    console.error('Vision endpoint error:', err.message || err);
     res.status(500).json({ error: err.message || 'Vision failed' });
   }
 });
@@ -352,7 +356,7 @@ app.get('/api/nutrition/:tab', async (req, res) => {
 
     res.json({ foodName: q, nutrition });
   } catch (err) {
-    console.error('Nutrition endpoint error:', err.response?.data || err.message || err);
+    console.error('Nutrition endpoint error:', err.message || err);
     res.status(500).json({ error: err.message || 'Nutrition lookup failed' });
   }
 });
@@ -384,7 +388,7 @@ app.post('/api/analyze-image', async (req, res) => {
     return res.json({ foodName, nutrition });
 
   } catch (err) {
-    console.error('Analyze-image endpoint error:', err.response?.data || err.message || err);
+    console.error('Analyze-image endpoint error:', err.message || err);
     return res.status(500).json({ error: err.message || 'Failed to analyze image' });
   }
 });
