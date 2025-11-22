@@ -1,583 +1,95 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="description" content="Food Logging PWA with multi-API support">
-    <title>Food Logger</title>
-    <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#1e293b">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Food Logger">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(to bottom right, #0f172a, #1e293b);
-            color: #fff;
-            min-height: 100vh;
-            padding-bottom: 80px;
-        }
-
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 16px;
-        }
-
-        header {
-            text-align: center;
-            margin-bottom: 24px;
-            margin-top: 12px;
-        }
-
-        h1 {
-            font-size: 28px;
-            margin-bottom: 8px;
-        }
-
-        .subtitle {
-            color: #cbd5e1;
-            font-size: 14px;
-        }
-
-        .tabs {
-            display: flex;
-            gap: 8px;
-            overflow-x: auto;
-            padding-bottom: 16px;
-            margin-bottom: 24px;
-            scroll-behavior: smooth;
-        }
-
-        .tab-btn {
-            flex-shrink: 0;
-            padding: 10px 16px;
-            border: none;
-            border-radius: 8px;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            background: #475569;
-            color: #cbd5e1;
-        }
-
-        .tab-btn.active {
-            color: #fff;
-        }
-
-        .tab-btn.active.tab1 { background: #3b82f6; }
-        .tab-btn.active.tab2 { background: #a855f7; }
-        .tab-btn.active.tab3 { background: #ef4444; }
-        .tab-btn.active.tab4 { background: #f97316; }
-        .tab-btn.active.tab5 { background: #22c55e; }
-
-        .card {
-            background: #1e293b;
-            border: 1px solid #334155;
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 16px;
-        }
-
-        .card h2 {
-            font-size: 16px;
-            font-weight: 600;
-            margin-bottom: 12px;
-        }
-
-        button {
-            width: 100%;
-            padding: 12px 16px;
-            border: none;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            margin-bottom: 8px;
-        }
-
-        .btn-primary {
-            background: #3b82f6;
-            color: #fff;
-        }
-
-        .btn-primary:hover {
-            background: #2563eb;
-        }
-
-        .btn-primary:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .btn-secondary {
-            background: #475569;
-            color: #cbd5e1;
-        }
-
-        .btn-secondary:hover {
-            background: #64748b;
-        }
-
-        .btn-success {
-            background: #22c55e;
-            color: #fff;
-        }
-
-        .btn-danger {
-            background: #ef4444;
-            color: #fff;
-        }
-
-        input[type="file"],
-        input[type="number"] {
-            display: none;
-        }
-
-        .image-preview {
-            background: #0f172a;
-            border-radius: 8px;
-            overflow: hidden;
-            margin-bottom: 12px;
-        }
-
-        .image-preview img {
-            width: 100%;
-            height: 200px;
-            object-fit: cover;
-            display: block;
-        }
-
-        .input-group {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-            margin-bottom: 12px;
-        }
-
-        .input-group label {
-            flex-shrink: 0;
-            font-size: 13px;
-            font-weight: 500;
-            min-width: 100px;
-        }
-
-        .input-group input {
-            flex: 1;
-            padding: 8px 12px;
-            background: #334155;
-            border: 1px solid #475569;
-            border-radius: 6px;
-            color: #fff;
-            font-size: 14px;
-        }
-
-        .alert {
-            padding: 12px;
-            border-radius: 8px;
-            font-size: 13px;
-            margin-bottom: 12px;
-            display: flex;
-            gap: 8px;
-            align-items: flex-start;
-        }
-
-        .alert-error {
-            background: #7f1d1d;
-            border: 1px solid #b91c1c;
-            color: #fecaca;
-        }
-
-        .alert-success {
-            background: #15803d;
-            border: 1px solid #22c55e;
-            color: #bbf7d0;
-        }
-
-        .nutrition-display {
-            background: #0f172a;
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 12px;
-            font-size: 13px;
-        }
-
-        .nutrition-display p {
-            margin-bottom: 4px;
-        }
-
-        .nutrition-display .label {
-            color: #94a3b8;
-        }
-
-        .nutrition-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            margin-bottom: 12px;
-        }
-
-        .nutrition-box {
-            background: #334155;
-            padding: 12px;
-            border-radius: 8px;
-            text-align: center;
-        }
-
-        .nutrition-box .label {
-            color: #94a3b8;
-            font-size: 12px;
-        }
-
-        .nutrition-box .value {
-            font-size: 18px;
-            font-weight: 700;
-            margin-top: 4px;
-        }
-
-        .log-item {
-            background: #334155;
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 8px;
-            display: flex;
-            gap: 12px;
-            align-items: center;
-        }
-
-        .log-item img {
-            width: 48px;
-            height: 48px;
-            border-radius: 6px;
-            object-fit: cover;
-            flex-shrink: 0;
-        }
-
-        .log-item-info {
-            flex: 1;
-            font-size: 13px;
-        }
-
-        .log-item-info .name {
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-
-        .log-item-info .details {
-            color: #94a3b8;
-            font-size: 12px;
-        }
-
-        .log-item-delete {
-            flex-shrink: 0;
-            background: #7f1d1d;
-            color: #fecaca;
-            border: none;
-            width: 32px;
-            height: 32px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 16px;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .log-item-delete:hover {
-            background: #b91c1c;
-        }
-
-        .empty-message {
-            text-align: center;
-            padding: 32px 16px;
-            color: #64748b;
-            font-size: 14px;
-        }
-
-        .loader {
-            display: inline-block;
-            width: 12px;
-            height: 12px;
-            border: 2px solid #94a3b8;
-            border-top-color: #fff;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .hidden {
-            display: none !important;
-        }
-
-        @media (max-width: 480px) {
-            h1 {
-                font-size: 24px;
-            }
-            .tab-btn {
-                font-size: 12px;
-                padding: 8px 12px;
-            }
-        }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>FoodLog AI — API Tester</title>
+  <link rel="manifest" href="/manifest.json">
+  <style>
+    body { font-family: -apple-system, Roboto, Arial; padding: 18px; background: #0f172a; color: #fff; }
+    h1 { font-size: 20px; margin-bottom: 8px; }
+    .box { background:#111827; padding:12px; border-radius:10px; margin-bottom:12px; border:1px solid #1f2937; }
+    button { padding:10px 12px; border-radius:8px; border:none; cursor:pointer; background:#3b82f6; color:#fff; }
+    pre { background:#0b1220; padding:10px; border-radius:8px; overflow:auto; color:#d1d5db; }
+    select, input[type=file] { width:100%; margin-top:8px; margin-bottom:8px; padding:8px; border-radius:8px; background:#0b1220; color:#fff; border:1px solid #1f2937; }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>🍽️ Food Logger</h1>
-            <p class="subtitle">Multi-API Nutrition Tracking</p>
-        </header>
+  <h1>FoodLog AI — API Tester</h1>
 
-        <div class="tabs" id="tabs"></div>
+  <div class="box">
+    <label><strong>Upload photo</strong></label>
+    <input id="fileInput" type="file" accept="image/*">
+    <button id="visionBtn">Recognize (OpenAI Vision)</button>
+    <p id="detected" style="margin-top:8px;color:#cbd5e1"></p>
+  </div>
 
-        <div class="card">
-            <h2>📸 Capture Food</h2>
-            <button class="btn-secondary" onclick="document.getElementById('fileInput').click()">
-                📷 Choose Image
-            </button>
-            <input type="file" id="fileInput" accept="image/*" onchange="handleImageSelect(event)">
-            
-            <div id="imagePreview" class="hidden">
-                <div class="image-preview">
-                    <img id="previewImg" src="" alt="Preview">
-                </div>
-                <div class="input-group">
-                    <label for="quantity">Quantity (g):</label>
-                    <input type="number" id="quantity" value="100" min="1" max="1000">
-                </div>
-                <button class="btn-primary" id="analyzeBtn" onclick="analyzeImage()">
-                    ✨ Analyze Image
-                </button>
-            </div>
+  <div class="box">
+    <label><strong>Select tab (nutrition provider)</strong></label>
+    <select id="tabSelect">
+      <option value="1">Tab 1 — Edamam Nutrition</option>
+      <option value="2">Tab 2 — Edamam Food DB</option>
+      <option value="3">Tab 3 — FatSecret</option>
+      <option value="4">Tab 4 — OpenFoodFacts</option>
+      <option value="5">Tab 5 — Spoonacular</option>
+      <option value="6">Tab 6 — OpenAI Nutrition</option>
+    </select>
+    <button id="getNutritionBtn">Get Nutrition for detected food</button>
+    <pre id="resultPre">No result yet</pre>
+  </div>
 
-            <div id="errorDiv" class="hidden alert alert-error"></div>
-            
-            <div id="resultDiv" class="hidden">
-                <div class="alert alert-success">✓ Food detected! Check details below.</div>
-                <div class="nutrition-display">
-                    <p><span class="label">Food:</span> <span id="resultName"></span></p>
-                    <p><span class="label">Calories (per 100g):</span> <span id="resultCal"></span></p>
-                    <p><span class="label">Protein:</span> <span id="resultProt"></span>g</p>
-                    <p><span class="label">Carbs:</span> <span id="resultCarbs"></span>g</p>
-                    <p><span class="label">Fat:</span> <span id="resultFat"></span>g</p>
-                </div>
-                <button class="btn-success" onclick="addToLog()">✓ Add to Log</button>
-            </div>
-        </div>
+  <script>
+    const visionBtn = document.getElementById('visionBtn');
+    const getNutritionBtn = document.getElementById('getNutritionBtn');
+    const fileInput = document.getElementById('fileInput');
+    const detected = document.getElementById('detected');
+    const resultPre = document.getElementById('resultPre');
+    const tabSelect = document.getElementById('tabSelect');
 
-        <div class="card" id="totalsCard" class="hidden">
-            <h2>📊 Today's Totals</h2>
-            <div class="nutrition-grid">
-                <div class="nutrition-box">
-                    <div class="label">Calories</div>
-                    <div class="value" id="totalCal">0</div>
-                </div>
-                <div class="nutrition-box">
-                    <div class="label">Protein</div>
-                    <div class="value" id="totalProt">0</div>
-                </div>
-                <div class="nutrition-box">
-                    <div class="label">Carbs</div>
-                    <div class="value" id="totalCarbs">0</div>
-                </div>
-                <div class="nutrition-box">
-                    <div class="label">Fat</div>
-                    <div class="value" id="totalFat">0</div>
-                </div>
-            </div>
-        </div>
+    let lastFoodName = '';
 
-        <div class="card">
-            <h2>📝 Food Log</h2>
-            <div id="logList"></div>
-            <div id="emptyMsg" class="empty-message">No foods logged yet. Start by capturing an image!</div>
-        </div>
-    </div>
+    visionBtn.addEventListener('click', async () => {
+      const file = fileInput.files[0];
+      if (!file) return alert('Please choose an image first');
+      const fd = new FormData();
+      fd.append('image', file);
 
-    <script>
-        let currentTab = 1;
-        let logs = [];
-        let currentResult = null;
-        let selectedImage = null;
-        let backendUrl = 'https://food-logging-api.onrender.com'; // REPLACE THIS
-
-        const tabs = [
-            { id: 1, name: 'Edamam (Nutrition)', color: '#3b82f6' },
-            { id: 2, name: 'Edamam (Food DB)', color: '#a855f7' },
-            { id: 3, name: 'FatSecret', color: '#ef4444' },
-            { id: 4, name: 'Spoonacular', color: '#f97316' },
-            { id: 5, name: 'OpenFacts', color: '#22c55e' },
-        ];
-
-        function initTabs() {
-            const tabsDiv = document.getElementById('tabs');
-            tabsDiv.innerHTML = tabs.map(tab => `
-                <button class="tab-btn tab${tab.id} ${tab.id === 1 ? 'active' : ''}" 
-                        onclick="switchTab(${tab.id})"
-                        style="${tab.id === 1 ? `background: ${tab.color}` : ''}">
-                    Tab ${tab.id}
-                </button>
-            `).join('');
+      detected.textContent = 'Recognizing...';
+      try {
+        const r = await fetch('/api/openai/vision', { method: 'POST', body: fd });
+        const data = await r.json();
+        if (data.error) {
+          detected.textContent = 'Error: ' + data.error;
+          return;
         }
+        lastFoodName = data.foodName;
+        detected.textContent = 'Detected: ' + lastFoodName;
+      } catch (err) {
+        detected.textContent = 'Failed: ' + err.message;
+      }
+    });
 
-        function switchTab(tabId) {
-            currentTab = tabId;
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            document.querySelector(`.tab${tabId}`).classList.add('active');
-            document.querySelector(`.tab${tabId}`).style.background = tabs.find(t => t.id === tabId).color;
-            document.getElementById('resultDiv').classList.add('hidden');
-            document.getElementById('errorDiv').classList.add('hidden');
+    getNutritionBtn.addEventListener('click', async () => {
+      const tab = tabSelect.value;
+      if (!lastFoodName) return alert('Recognize an image first (button above)');
+      resultPre.textContent = 'Fetching nutrition...';
+      try {
+        const res = await fetch(`/api/nutrition/${tab}?q=${encodeURIComponent(lastFoodName)}`);
+        const data = await res.json();
+        if (data.error) {
+          resultPre.textContent = 'Error: ' + data.error;
+        } else {
+          resultPre.textContent = JSON.stringify(data, null, 2);
         }
+      } catch (err) {
+        resultPre.textContent = 'Failed: ' + err.message;
+      }
+    });
 
-        function handleImageSelect(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                selectedImage = e.target.result;
-                document.getElementById('previewImg').src = selectedImage;
-                document.getElementById('imagePreview').classList.remove('hidden');
-                document.getElementById('resultDiv').classList.add('hidden');
-                document.getElementById('errorDiv').classList.add('hidden');
-            };
-            reader.readAsDataURL(file);
-        }
-
-        async function analyzeImage() {
-            if (!selectedImage) return;
-
-            const btn = document.getElementById('analyzeBtn');
-            btn.disabled = true;
-            btn.innerHTML = '<span class="loader"></span> Analyzing...';
-
-            try {
-                const response = await fetch(`${backendUrl}/api/analyze-image`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        image: selectedImage,
-                        tab: currentTab
-                    })
-                });
-
-                if (!response.ok) throw new Error('Analysis failed');
-                const data = await response.json();
-
-                currentResult = data;
-                document.getElementById('resultName').textContent = data.foodName;
-                document.getElementById('resultCal').textContent = data.nutrition.calories.toFixed(0);
-                document.getElementById('resultProt').textContent = data.nutrition.protein.toFixed(1);
-                document.getElementById('resultCarbs').textContent = data.nutrition.carbs.toFixed(1);
-                document.getElementById('resultFat').textContent = data.nutrition.fat.toFixed(1);
-                document.getElementById('resultDiv').classList.remove('hidden');
-                document.getElementById('errorDiv').classList.add('hidden');
-            } catch (error) {
-                document.getElementById('errorDiv').textContent = `❌ Error: ${error.message}`;
-                document.getElementById('errorDiv').classList.remove('hidden');
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = '✨ Analyze Image';
-            }
-        }
-
-        function addToLog() {
-            if (!currentResult) return;
-
-            const quantity = parseFloat(document.getElementById('quantity').value) || 100;
-            logs.push({
-                id: Date.now(),
-                tab: currentTab,
-                tabName: tabs.find(t => t.id === currentTab).name,
-                foodName: currentResult.foodName,
-                nutrition: currentResult.nutrition,
-                quantity,
-                timestamp: new Date().toLocaleTimeString(),
-                image: selectedImage
-            });
-
-            selectedImage = null;
-            currentResult = null;
-            document.getElementById('fileInput').value = '';
-            document.getElementById('quantity').value = '100';
-            document.getElementById('imagePreview').classList.add('hidden');
-            document.getElementById('resultDiv').classList.add('hidden');
-            updateLog();
-        }
-
-        function removeLog(id) {
-            logs = logs.filter(log => log.id !== id);
-            updateLog();
-        }
-
-        function updateLog() {
-            const logList = document.getElementById('logList');
-            const emptyMsg = document.getElementById('emptyMsg');
-            const totalsCard = document.getElementById('totalsCard');
-
-            if (logs.length === 0) {
-                logList.innerHTML = '';
-                emptyMsg.classList.remove('hidden');
-                totalsCard.classList.add('hidden');
-                return;
-            }
-
-            emptyMsg.classList.add('hidden');
-            totalsCard.classList.remove('hidden');
-
-            let totals = { calories: 0, protein: 0, carbs: 0, fat: 0 };
-            logs.forEach(log => {
-                const mult = log.quantity / 100;
-                totals.calories += log.nutrition.calories * mult;
-                totals.protein += log.nutrition.protein * mult;
-                totals.carbs += log.nutrition.carbs * mult;
-                totals.fat += log.nutrition.fat * mult;
-            });
-
-            document.getElementById('totalCal').textContent = totals.calories.toFixed(0);
-            document.getElementById('totalProt').textContent = totals.protein.toFixed(1);
-            document.getElementById('totalCarbs').textContent = totals.carbs.toFixed(1);
-            document.getElementById('totalFat').textContent = totals.fat.toFixed(1);
-
-            logList.innerHTML = logs.map(log => {
-                const mult = log.quantity / 100;
-                const cal = (log.nutrition.calories * mult).toFixed(0);
-                return `
-                    <div class="log-item">
-                        <img src="${log.image}" alt="Food">
-                        <div class="log-item-info">
-                            <div class="name">${log.foodName}</div>
-                            <div class="details">${log.tabName}</div>
-                            <div class="details">${log.quantity}g • ${cal} cal</div>
-                            <div class="details">${log.timestamp}</div>
-                        </div>
-                        <button class="log-item-delete" onclick="removeLog(${log.id})">✕</button>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        // Service Worker registration for PWA
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW registration failed'));
-        }
-
-        initTabs();
-    </script>
+    // register service worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(()=>{});
+    }
+  </script>
 </body>
 </html>
